@@ -16,7 +16,7 @@ export const getAllPosts = async (req, res) => {
   const result = q.all(pageSize, offset)
 
   const count = db.prepare('SELECT COUNT(*) FROM posts').get()['COUNT(*)'];
-  const noOfPages = Math.ceil(count / 10)
+  const noOfPages = Math.ceil(count / pageSize)
 
   return res.status(200).json({
     result: result,

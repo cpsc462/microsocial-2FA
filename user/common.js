@@ -134,4 +134,4 @@ module.exports.ANALYTICS_SERVICE = curried_uri(ANALYTICS_SERVICE_NAME)
 // >>>>>>> Configure as needed
 module.exports.MY_SERVICE_NAME = USERS_SERVICE_NAME
 // <<<<<<<<<<<<<
-module.exports.MY_SERVICE = curried_uri(USERS_SERVICE_NAME)
+module.exports.MY_SERVICE = curried_uri(USERS_SERVICE_NAME)("")
