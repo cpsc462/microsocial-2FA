@@ -140,10 +140,10 @@ router.put("/user/:id", (req, res) => {
     return;
   }
 
-  const stmt = db.prepare(`UPDATE users SET name=?, password=? WHERE id=?`);
+  const stmt = db.prepare(`UPDATE users SET name=?, password=?, phone_number=?, two_factor_enabled=? WHERE id=?`);
 
   try {
-    info = stmt.run([updatedUser.name, updatedUser.password, id]);
+    info = stmt.run([updatedUser.name, updatedUser.password, updatedUser.phone_number, updatedUser.two_factor_enabled, id]);
     if (info.changes < 1) {
       log_event({
         severity: 'Low',
@@ -252,6 +252,16 @@ router.patch("/user/:id", (req, res) => {
     if ("password" in updatedUser) {
       updateClauses.push("password = ?");
       updateParams.push(updatedUser.password);
+    }
+
+    if ("phone_number" in updatedUser) {
+      updateClauses.push("phone_number = ?");
+      updateParams.push(updatedUser.phone_number);
+    }
+
+    if ("two_factor_enabled" in updatedUser) {
+      updateClauses.push("two_factor_enabled = ?");
+      updateParams.push(updatedUser.two_factor_enabled);
     }
 
     const stmt = db.prepare(
