@@ -97,6 +97,25 @@ function getUserByNameAndPassword (user_name, user_pass) {
   return user
 }
 
+function getUserPhoneNumber(user_name, user_pass) {
+  const getUserPhoneNumberSql = 
+    'SELECT phone_number FROM users WHERE name = ? AND password = ?';
+  const result = db.get(getUserPhoneNumberSql, [user_name, user_pass]);
+  return result ? result.phone_number : null;
+}
+
+function isValidPhoneNumber(phone_number) {
+  const phoneRegex = /^\d{10}$/;
+  return phoneRegex.test(phone_number);
+}
+
+
+function getUserTwoFactor(user_name, user_pass) {
+  const getUserTwoFactorSql = 'SELECT two_factor_enabled FROM users WHERE name = ? AND password = ?';
+  const result = db.get(getUserTwoFactorSql, [user_name, user_pass]);
+  return result ? result.two_factor_enabled : null;
+}
+
 function app_setup () {
   if (parseInt(process.env.NO_AUTH) != 0) {
     return
@@ -173,7 +192,7 @@ router.post('/auth/token', async (req, res) => {
           type: 'NoRefresh',
           message: `Nonexistent/revoked refresh token sent from ${req.socket.remoteAddress}.`
       })
-    }
+    }pop
 
     deleteRefreshTokenById(old_refresh_token_id)
 
@@ -213,7 +232,7 @@ router.post('/auth/token', async (req, res) => {
  * /auth/login:
  *   post:
  *     summary: Create a login token
- *     description: Logs in a user by creating a expressjwt. Username and password matched against database. No checks for duplicate tokens or expired accounts.
+ *     description: Logs in a user by creating a expressjwt. Username and password matched against database. If user enabled 2FA, returns phone number instead of user information. No checks for duplicate tokens or expired accounts.
  *     operationId: login
  *     tags: [Auth API]
  *     requestBody:
@@ -229,6 +248,29 @@ router.post('/auth/token', async (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/LoginToken'
+ *       201:
+ *         description: Two-factor enabled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: SMS sent to your phone number
+ *                 phone_number:
+ *                   type: string
+ *                   example: 7149319319
+ *       400:
+ *         description: Invalid phone number
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Invalid phone number
  *       401:
  *         description: Login Failed
  */
@@ -259,6 +301,26 @@ router.post('/auth/login', async (req, res) => {
         type: 'FailedLogin',
         message: `Failed login sent from ${req.socket.remoteAddress} (user '${login_info.name}' submitted)`
     })
+  }
+
+  // If two-factor authentication is enabled, retrieve phone number, otherwise, retrieve log in information
+  const two_factor_enabled = getUserTwoFactor(login_info.name, login_info.password);
+  if (two_factor_enabled === 1) {
+    const phone_number = getUserPhoneNumber(login_info.name, login_info.password);
+    //validation that phone number is 10 digits
+    if (!isValidPhoneNumber(phone_number)) {
+      return returnError(res, {
+        status: StatusCodes.BAD_REQUEST,
+        statusMessage: 'Invalid phone number',
+        severity: 'High',
+        type: 'InvalidPhoneNumber',
+        message: 'The provided phone number is invalid.',
+      });
+    }
+    return res.json({
+      message: "SMS sent to your phone number",
+      phone_number,
+    });
   }
 
   deleteRefreshTokensByUser(logged_in_user.id)
